@@ -71,7 +71,7 @@ const likeCard = async (req, res) => {
       return;
     }
     res.status(500).send({
-      message: 'Произошла ошибка в работе сервера',
+      message: 'Произошла ошибка сервера',
     });
   }
 };

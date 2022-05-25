@@ -71,7 +71,7 @@ const updateUser = async (req, res) => {
       return;
     }
     res.status(500).send({
-      message: 'Произошла ошибка сервера',
+      message: 'Произошла ошибка в работе сервера',
     });
   }
 };
