@@ -1,58 +1,128 @@
+const bcrypt = require('bcryptjs');
 const User = require('../models/user');
+const { generateToken, isAuthorization } = require('../utils/jwt');
 
-const getUsers = async (_, res) => {
+const NotFoundError = require('../errors/NotFoundError');
+const ConflictError = require('../errors/ConflictError');
+const AuthorizationError = require('../errors/AuthorizationError');
+const ValidationError = require('../errors/ValidationError');
+const ServerError = require('../errors/ServerErrror');
+
+const createUser = async (req, res, next) => {
+  const {
+    email, password, name, about, avatar,
+  } = req.body;
+  if (!email || !password) {
+    next(new ValidationError('Неверный логин или пароль'));
+    return;
+  }
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const userCreate = new User({
+      email,
+      password: hash,
+      name,
+      about,
+      avatar,
+    });
+    res.status(201).send(await userCreate.save());
+  } catch (err) {
+    if (err.name === 'ValidationError') {
+      next(new ValidationError('Ошибка валидации'));
+      return;
+    }
+    if ((err.code === 11000)) {
+      next(new ConflictError('Такой пользователь уже существует'));
+      return;
+    }
+    next(new ServerError('Произошла ошибка сервера'));
+  }
+};
+
+const login = async (req, res, next) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    next(new ValidationError('Неверный логин или пароль'));
+    return;
+  }
+  try {
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      next(new AuthorizationError('Неверный логин или пароль'));
+      return;
+    }
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      next(new AuthorizationError('Неверный логин или пароль'));
+      return;
+    }
+
+    const token = await generateToken(user._id);
+    res.status(200).send({ token });
+  } catch (err) {
+    next(new ServerError('Произошла ошибка сервера'));
+  }
+};
+
+const getUsers = async (req, res, next) => {
+  const isAuth = await isAuthorization(req.headers.authorization);
+  if (!isAuth) {
+    next(new AuthorizationError('Нет доступа'));
+    return;
+  }
   try {
     const users = await User.find({});
     res.status(200).send(users);
   } catch (err) {
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const getUserId = async (req, res) => {
+const getUser = async (req, res, next) => {
+  const isAuth = await isAuthorization(req.headers.authorization);
+  if (!isAuth) {
+    next(new AuthorizationError('Нет доступа'));
+    return;
+  }
+  try {
+    const user = await User.findOne({ id: req.params.id });
+    if (!user) {
+      next(new NotFoundError('Пользователя нет в базе данных'));
+      return;
+    }
+    res.status(200).send({ data: user });
+  } catch (err) {
+    if (err.name === 'CastError') {
+      next(new ValidationError('Пользователь не найден'));
+      return;
+    }
+    next(new ServerError('Произошла ошибка сервера'));
+  }
+};
+
+const getUserId = async (req, res, next) => {
+  const isAuth = await isAuthorization(req.headers.authorization);
+  if (!isAuth) {
+    next(new AuthorizationError('Нет доступа'));
+    return;
+  }
   try {
     const userId = await User.findById(req.params.userId);
     if (!userId) {
-      res.status(404).send({ message: 'Пользователь не найден' });
+      next(new NotFoundError('Пользователя нет в базе данных'));
       return;
     }
     res.status(200).send({ data: userId });
   } catch (err) {
     if (err.name === 'CastError') {
-      res.status(400).send({
-        message: 'Пользователя с таким id нет',
-      });
+      next(new ValidationError('Пользователя с таким id нет'));
       return;
     }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const createUser = async (req, res) => {
-  try {
-    const { name, about, avatar } = req.body;
-    const userCreate = new User({ name, about, avatar });
-    res.status(201).send(await userCreate.save());
-  } catch (err) {
-    if (err.name === 'ValidationError') {
-      res.status(400).send({
-        message: `${Object.values(err.errors)
-          .map((error) => error.message)
-          .join(', ')}`,
-      });
-      return;
-    }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
-  }
-};
-
-const updateUser = async (req, res) => {
+const updateUser = async (req, res, next) => {
   try {
     const { name, about } = req.body;
     const userUpdate = await User.findByIdAndUpdate(
@@ -63,20 +133,16 @@ const updateUser = async (req, res) => {
     res.status(200).send(userUpdate);
   } catch (err) {
     if (err.name === 'ValidationError') {
-      res.status(400).send({
-        message: `${Object.values(err.errors)
-          .map((error) => error.message)
-          .join(', ')}`,
-      });
+      next(new ValidationError(`${Object.values(err.errors)
+        .map((error) => error.message)
+        .join(', ')}`));
       return;
     }
-    res.status(500).send({
-      message: 'Произошла ошибка в работе сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const updateAvatar = async (req, res) => {
+const updateAvatar = async (req, res, next) => {
   try {
     const { avatar } = req.body;
     const userId = await User.findByIdAndUpdate(
@@ -87,18 +153,16 @@ const updateAvatar = async (req, res) => {
     res.status(200).send(userId);
   } catch (err) {
     if (err.name === 'ValidationError') {
-      res.status(400).send({
-        message: 'Переданы некорректные данные',
-      });
+      next(new ValidationError('Переданы некорректные данные'));
       return;
     }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
 module.exports = {
+  login,
+  getUser,
   getUsers,
   getUserId,
   createUser,

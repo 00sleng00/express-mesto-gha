@@ -1,17 +1,19 @@
 const Card = require('../models/card');
 
-const getCards = async (_, res) => {
+const NotFoundError = require('../errors/NotFoundError');
+const ValidationError = require('../errors/ValidationError');
+const ServerError = require('../errors/ServerErrror');
+
+const getCards = async (_, res, next) => {
   try {
     const users = await Card.find({});
     res.status(200).send(users);
   } catch (err) {
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const createCard = async (req, res) => {
+const createCard = async (req, res, next) => {
   try {
     const { name, link } = req.body;
     res
@@ -19,37 +21,29 @@ const createCard = async (req, res) => {
       .send(await Card.create({ name, link, owner: req.user._id }));
   } catch (err) {
     if (err.name === 'ValidationError') {
-      res.status(400).send({
-        message: 'Ошибка введеных данных',
-      });
+      next(new ValidationError('Ошибка введеных данных'));
       return;
     }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const deleteCardId = async (req, res) => {
+const deleteCardId = async (req, res, next) => {
   try {
     const cardId = await Card.findByIdAndRemove(req.params.cardId);
     if (!cardId) {
-      res.status(404).send({
-        message: 'Карточка не найдена',
-      });
+      next(new NotFoundError('Карточка не найдена'));
     }
     res.status(200).send(cardId);
   } catch (err) {
     if (err.name === 'CastError') {
-      res.status(400).send({ message: 'Невалидный id' });
+      next(new ValidationError('Невалидный id'));
     }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const likeCard = async (req, res) => {
+const likeCard = async (req, res, next) => {
   try {
     const like = await Card.findByIdAndUpdate(
       req.params.cardId,
@@ -57,26 +51,20 @@ const likeCard = async (req, res) => {
       { new: true },
     );
     if (!like) {
-      res.status(404).send({
-        message: 'Карточка не найдена',
-      });
+      next(new NotFoundError('Карточка не найдена'));
       return;
     }
     res.status(200).send({ data: like });
   } catch (err) {
     if (err.name === 'CastError') {
-      res.status(400).send({
-        message: 'Переданы некорректные данные',
-      });
+      next(new ValidationError('Переданы некорректные данные'));
       return;
     }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
-const dislikeCard = async (req, res) => {
+const dislikeCard = async (req, res, next) => {
   try {
     const dislike = await Card.findByIdAndUpdate(
       req.params.cardId,
@@ -84,22 +72,16 @@ const dislikeCard = async (req, res) => {
       { new: true },
     );
     if (!dislike) {
-      res.status(404).send({
-        message: 'Карточка не найдена',
-      });
+      next(new NotFoundError('Карточка не найдена'));
       return;
     }
     res.status(200).send({ data: dislike });
   } catch (err) {
     if (err.name === 'CastError') {
-      res.status(400).send({
-        message: 'Переданы некорректные данные',
-      });
+      next(new ValidationError('Переданы некорректные данные'));
       return;
     }
-    res.status(500).send({
-      message: 'Произошла ошибка сервера',
-    });
+    next(new ServerError('Произошла ошибка сервера'));
   }
 };
 
