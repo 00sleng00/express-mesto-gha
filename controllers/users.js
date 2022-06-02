@@ -143,21 +143,30 @@ const updateUser = async (req, res, next) => {
 };
 
 const updateAvatar = async (req, res, next) => {
-  try {
-    const { avatar } = req.body;
-    const userId = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatar },
-      { new: true, runValidators: true },
-    );
-    res.status(200).send(userId);
-  } catch (err) {
-    if (err.name === 'ValidationError') {
-      next(new ValidationError('Переданы некорректные данные'));
-      return;
-    }
-    next(new ServerError('Произошла ошибка сервера'));
-  }
+  const { avatar } = req.body;
+  User.findByIdAndUpdate(
+    req.user._id,
+    { avatar },
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
+    .then((user) => {
+      if (!user) {
+        return next(new NotFoundError('Переданы некорректные данные'));
+      }
+      return res.status(200).send({
+        avatar: user.avatar,
+      });
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(new ValidationError('Переданы некорректные данные'));
+      } else {
+        next(err);
+      }
+    });
 };
 
 module.exports = {

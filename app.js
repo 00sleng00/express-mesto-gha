@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { errors, celebrate, Joi } = require('celebrate');
@@ -15,10 +16,11 @@ const app = express();
 
 app.use(helmet());
 app.use(express.json());
+app.use(cookieParser());
 app.use('/users', auth, userRoutes);
 app.use('/cards', auth, cardRoutes);
-app.use((_req, _res, next) => {
-  next(new NotFoundError('Страница не найдена'));
+app.all('*', auth, (_req, _res, next) => {
+  next(new NotFoundError('Страница не  найдена'));
 });
 
 const limiter = rateLimit({
