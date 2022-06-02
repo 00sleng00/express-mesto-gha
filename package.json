@@ -28,7 +28,9 @@
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.3.4",
     "validator": "^13.7.0",
-    "celebrate": "^15.0.1"
+    "celebrate": "^15.0.1",
+    "joi": "^17.6.0",
+    "cookie-parser": "^1.4.6"
   },
   "devDependencies": {
     "eslint": "^8.16.0",
