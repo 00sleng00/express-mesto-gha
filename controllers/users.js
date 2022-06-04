@@ -13,7 +13,7 @@ const createUser = async (req, res, next) => {
     email, password, name, about, avatar,
   } = req.body;
   if (!email || !password) {
-    next(new ValidationError('Неверный логин или пароль'));
+    next(new AuthorizationError('Неверный логин или пароль'));
     return;
   }
   try {
@@ -64,12 +64,7 @@ const login = async (req, res, next) => {
   }
 };
 
-const getUsers = async (req, res, next) => {
-  const isAuth = await isAuthorization(req.headers.authorization);
-  if (!isAuth) {
-    next(new AuthorizationError('Нет доступа'));
-    return;
-  }
+const getUsers = async (_req, res, next) => {
   try {
     const users = await User.find({});
     res.status(200).send(users);
