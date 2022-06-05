@@ -51,7 +51,7 @@ const login = async (req, res, next) => {
         .send({ message: 'Авторизация прошла успешно' });
     })
     .catch(() => {
-      next(new AuthorizationError('Не правильные почта или пароль'));
+      next(new AuthorizationError('Неверный логин или пароль'));
     });
 };
 
