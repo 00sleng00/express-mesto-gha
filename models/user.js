@@ -1,44 +1,42 @@
 const mongoose = require('mongoose');
-const { isEmail, isURL } = require('validator');
+const validator = require('validator');
+
+const { reg } = require('../utils/constants');
 
 const userSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    unique: true,
-    required: true,
-    validate: {
-      validator: (v) => isEmail(v),
-      message: 'Неверно указана почта',
-    },
-  },
-  password: {
-    type: String,
-    required: true,
-    select: false,
-  },
   name: {
     type: String,
     minlength: 2,
     maxlength: 30,
-    required: false,
     default: 'Жак-Ив Кусто',
   },
   about: {
     type: String,
     minlength: 2,
     maxlength: 30,
-    required: false,
     default: 'Исследователь',
   },
   avatar: {
     type: String,
-    required: false,
-    default: 'https://pictures.s3.yandex.net/resources/jacques-cousteau_1604399756.png',
     validate: {
-      validator: (avatar) => isURL(avatar),
-      message: 'Неправильный формат URL',
+      validator(v) {
+        return reg.test(v);
+      },
+      message: 'Введите ссылку на изображение',
     },
+    default: 'https://pictures.s3.yandex.net/resources/jacques-cousteau_1604399756.png',
   },
-});
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    validate: [validator.isEmail, 'Введите email'],
+  },
+  password: {
+    type: String,
+    requred: true,
+    select: false,
+  },
+}, { versionKey: false });
 
 module.exports = mongoose.model('user', userSchema);
