@@ -1,12 +1,14 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const { generateToken } = require('../utils/jwt');
 
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
 const AuthorizationError = require('../errors/AuthorizationError');
 const ValidationError = require('../errors/ValidationError');
 const ServerError = require('../errors/ServerErrror');
+
+const { NODE_ENV, JWT_SECRET } = process.env;
 
 const createUser = async (req, res, next) => {
   const {
@@ -34,27 +36,24 @@ const createUser = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   const { email, password } = req.body;
-  if (!email || !password) {
-    next(new ValidationError('Неверный логин или пароль'));
-    return;
-  }
-  try {
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      next(new AuthorizationError('Неверный логин или пароль'));
-      return;
-    }
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      next(new AuthorizationError('Неверный логин или пароль'));
-      return;
-    }
 
-    const token = await generateToken(user._id);
-    res.status(200).send({ token });
-  } catch (err) {
-    next(new ServerError('Произошла ошибка сервера'));
-  }
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign(
+        { _id: user._id },
+        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+        { expiresIn: '7d' },
+      );
+      res.cookie('jwt', token, {
+        maxAge: 3600000 * 24 * 7,
+        httpOnly: true,
+        sameSite: true,
+      })
+        .send({ message: 'Авторизация прошла успешно' });
+    })
+    .catch(() => {
+      next(new AuthorizationError('Не правильные почта или пароль'));
+    });
 };
 
 const getUsers = async (_, res, next) => {
