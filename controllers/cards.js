@@ -70,7 +70,7 @@ const likeCard = (req, res, next) => {
     });
 };
 
-const dislikeCard = async (req, res, next) => {
+const dislikeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     { $pull: { likes: req.user._id } },
