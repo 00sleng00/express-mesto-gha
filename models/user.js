@@ -2,8 +2,6 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcrypt');
 
-const { reg } = require('../utils/constants');
-
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -21,7 +19,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator(v) {
-        return reg.test(v);
+        return validator.isURL(v);
       },
       message: 'Введите ссылку на изображение',
     },
@@ -31,14 +29,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    validate: [validator.isEmail, 'Введите email'],
+    validate: {
+      validator(email) {
+        return validator.isEmail(email);
+      },
+      message: 'Неправильный формат почты',
+    },
   },
   password: {
     type: String,
     requred: true,
     select: false,
   },
-}, { versionKey: false });
+});
 
 userSchema.statics.findUserByCredentials = function findUserByCredentials(email, password) {
   return this.findOne({ email }).select('+password')
