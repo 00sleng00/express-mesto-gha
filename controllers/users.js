@@ -7,8 +7,6 @@ const ConflictError = require('../errors/ConflictError');
 const AuthorizationError = require('../errors/AuthorizationError');
 const ValidationError = require('../errors/ValidationError');
 
-const { NODE_ENV, JWT_SECRET } = process.env;
-
 const createUser = (req, res, next) => {
   const {
     name, about, avatar, email, password,
@@ -42,21 +40,11 @@ const login = (req, res, next) => {
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign(
-        { _id: user._id },
-        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
-        { expiresIn: '7d' },
-      );
-      res.cookie('jwt', token, {
-        maxAge: 3600000 * 24 * 7,
-        httpOnly: true,
-        sameSite: true,
-      })
-        .send({ message: 'Авторизация прошла успешно' });
+      const token = jwt.sign({ _id: user._id }, 'super-strong-secret', { expiresIn: '7d' });
+
+      res.send({ token });
     })
-    .catch(() => {
-      next(new AuthorizationError('Неверный логин или пароль'));
-    });
+    .catch(() => next(new AuthorizationError('Неверные почта или пароль')));
 };
 
 const getUsers = (_, res, next) => {

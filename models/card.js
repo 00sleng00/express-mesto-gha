@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
-
-const { reg } = require('../utils/constants');
+const validator = require('validator');
 
 const cardSchema = new mongoose.Schema({
   name: {
@@ -13,9 +12,8 @@ const cardSchema = new mongoose.Schema({
     type: String,
     required: true,
     validate: {
-      validator(v) {
-        return reg.test(v);
-      },
+      validator: (v) => validator.isURL(v),
+      message: 'Неверный формат URL',
     },
   },
   owner: {
