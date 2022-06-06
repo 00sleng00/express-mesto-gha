@@ -28,42 +28,40 @@ const limiter = rateLimit({
 // Apply the rate limiting middleware to all requests
 app.use(limiter);
 
-async function main() {
-  await mongoose.connect('mongodb://localhost:27017/mestodb', {
-    useNewUrlParser: true,
-    useUnifiedTopology: false,
-  });
+mongoose.connect('mongodb://localhost:27017/mestodb');
 
-  app.post('/signup', celebrate({
-    body: Joi.object().keys({
-      name: Joi.string().min(2).max(30),
-      about: Joi.string().min(2).max(30),
-      avatar: Joi.string().regex(/https?:\/\/(www\.)?[-a-zA-z0-9@:%_\\+.~#?&=]+\.[a-zA-Z0-9()]+([-a-zA-Z0-9()@:%_\\+.~#?&=]*)/),
-      email: Joi.string().required().email({ minDomainSegments: 2 }),
-      password: Joi.string().required(),
-    }),
-  }), createUser);
+app.post('/signup', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().min(2).max(30),
+    about: Joi.string().min(2).max(30),
+    avatar: Joi.string().regex(/https?:\/\/(www\.)?[-a-zA-z0-9@:%_\\+.~#?&=]+\.[a-zA-Z0-9()]+([-a-zA-Z0-9()@:%_\\+.~#?&=]*)/),
+    email: Joi.string().required().email(),
+    password: Joi.string().required(),
+  }),
+}), createUser);
 
-  app.post('/signin', celebrate({
-    body: Joi.object().keys({
-      email: Joi.string().required().email({ minDomainSegments: 2 }),
-      password: Joi.string().required(),
-    }),
-  }), login);
+app.post('/signin', celebrate({
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required(),
+  }),
+}), login);
 
-  app.use('/users', auth, userRoutes);
-  app.use('/cards', auth, cardRoutes);
-  app.all('*', auth, (_req, _res, next) => {
-    next(new NotFoundError('Страница не  найдена'));
-  });
+app.use(auth);
 
-  app.use(errors());
+app.use('/users', auth, userRoutes);
+app.use('/cards', auth, cardRoutes);
 
-  app.listen(PORT, () => {
-    // eslint-disable-next-line
-    console.log(`Поключён ${PORT} порт`);
-  });
-}
+app.all('*', auth, (_req, _res, next) => {
+  next(new NotFoundError('Страница не  найдена'));
+});
+
+app.use(errors());
+
+app.listen(PORT, () => {
+  // eslint-disable-next-line
+  console.log(`Поключён ${PORT} порт`);
+});
 
 app.use((err, _req, res, next) => {
   const { statusCode = 500, message } = err;
@@ -76,5 +74,3 @@ app.use((err, _req, res, next) => {
     });
   next();
 });
-
-main();
