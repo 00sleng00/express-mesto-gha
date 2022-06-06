@@ -9,28 +9,38 @@ const ValidationError = require('../errors/ValidationError');
 
 const { NODE_ENV, JWT_SECRET } = process.env;
 
-const createUser = (req, res, next) => {
+const createUser = async (req, res, next) => {
   const {
-    name, about, avatar, email, password,
+    email, password, name, about, avatar,
   } = req.body;
 
   if (!email || !password) {
-    return next(new ValidationError('Неверный логин или пароль'));
+    next(new ValidationError('Неверный логин или пароль'));
+    return;
   }
-  return bcrypt.hash(password, 10)
-    .then((hash) => User.create({
-      name, about, avatar, email, password: hash,
-    }))
-    .then((user) => res.status(201).send({
-      name: user.name, about: user.about, avatar: user.avatar, email: user.email, id: user._id,
-    }))
-    .catch((err) => {
-      if (err.code === 11000) {
-        next(new ConflictError('Такой пользователь уже существует'));
-      } else {
-        next(err);
-      }
+  try {
+    const hash = await bcrypt.hash(password, 8);
+    const userCreate = new User({
+      email,
+      password: hash,
+      name,
+      about,
+      avatar,
     });
+    const savedUser = await userCreate.save();
+    const { password: removedPassword, ...result } = savedUser.toObject();
+    res.status(201).send(result);
+  } catch (err) {
+    if (err.name === 'ValidationError') {
+      next(new ValidationError('Ошибка валидации'));
+      return;
+    }
+    if ((err.code === 11000)) {
+      next(new ConflictError('Такой Пользователь уже существует'));
+      return;
+    }
+    next(err);
+  }
 };
 
 const login = (req, res, next) => {
