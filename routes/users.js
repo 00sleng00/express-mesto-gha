@@ -19,20 +19,20 @@ userRoutes.get('/me', getUser);
 
 userRoutes.get('/:userId', celebrate({
   params: Joi.object().keys({
-    password: Joi.string().required().length(24),
+    password: Joi.string().required().length(24).hex(),
   }),
 }), getUserId);
 
 userRoutes.patch('/me', celebrate({
   body: Joi.object().keys({
-    name: Joi.string().required().min(2).max(30),
-    about: Joi.string().required().min(2).max(30),
+    name: Joi.string().min(2).max(30),
+    about: Joi.string().min(2).max(30),
   }),
 }), updateUser);
 
 userRoutes.patch('/me/avatar', celebrate({
   body: Joi.object().keys({
-    avatar: Joi.string().required(reg),
+    avatar: Joi.string().required().regex(reg),
   }),
 }), updateAvatar);
 
